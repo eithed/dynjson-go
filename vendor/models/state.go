@@ -114,24 +114,25 @@ func (state *State) Definition(record *Record) *Definition {
 		return nil
 	}
 
-	definition := Definition{
-		Fields: make(map[string]Field)}
+	definition := Definition{}
 
 	for _, value := range record.Records {
-		field := Field{}
+		field := Field{
+			Name:   value.Name,
+			TypeOf: value.TypeOf}
 
 		switch value.TypeOf {
 		// array of somethings
 		case "array":
-			field.TypeOf = *state.RecurseKeyName(&value)
+			field.Translation = *state.RecurseKeyName(&value)
 		// object of somethings
 		case "object":
-			field.TypeOf = fmt.Sprintf("%s", state.Definition(&value).Name())
+			field.Translation = fmt.Sprintf("%s", state.Definition(&value).Name())
 		default:
-			field.TypeOf = value.TypeOf
+			field.Translation = value.TypeOf
 		}
 
-		definition.Fields[value.Name] = field
+		definition.Fields = append(definition.Fields, field)
 	}
 
 	existingDefinition := state.ExistingDefinition(definition)

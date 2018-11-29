@@ -9,13 +9,13 @@ import (
 )
 
 type Definition struct {
-	Fields map[string]Field
+	Fields []Field
 }
 
 func (definition *Definition) Signature() string {
 	var keys []string
-	for key, field := range definition.Fields {
-		keys = append(keys, key+":"+field.TypeOf)
+	for _, field := range definition.Fields {
+		keys = append(keys, field.Name+":"+field.TypeOf)
 	}
 
 	sort.Strings(keys)
@@ -26,19 +26,35 @@ func (definition *Definition) Signature() string {
 func (definition *Definition) Name() string {
 	hasher := sha256.New()
 	hasher.Write([]byte(definition.Signature()))
-	return strings.Title(hex.EncodeToString(hasher.Sum(nil)))
+	return "Struct_" + hex.EncodeToString(hasher.Sum(nil))
 }
 
 func (definition *Definition) Body() string {
 	ret := ""
 
-	for key, field := range definition.Fields {
-		ret += fmt.Sprintf("\n%s %s", strings.Title(key), field.ToString())
+	for _, field := range definition.Fields {
+		ret += fmt.Sprintf("%s\n", field.ToString())
+	}
+
+	return ret
+}
+
+func (definition *Definition) Accessors() string {
+	ret := ""
+
+	for _, field := range definition.Fields {
+		ret += fmt.Sprintf(`func (str *%s) %s() %s {
+			return str.%s
+		}
+		`, definition.Name(), strings.Title(field.Name), field.Translation, "Field_"+field.Name)
 	}
 
 	return ret
 }
 
 func (definition *Definition) ToString() string {
-	return fmt.Sprintf("type %s struct {%s\n}\n", definition.Name(), definition.Body())
+	return fmt.Sprintf(`type %s struct {
+		%s}
+	
+	%s`, definition.Name(), definition.Body(), definition.Accessors())
 }

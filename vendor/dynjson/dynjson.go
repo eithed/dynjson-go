@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"models"
-	"plugin"
 	"time"
 )
 
@@ -33,47 +32,37 @@ func Parse(json interface{}) string {
 	
 	import (
 		"encoding/json"
-		"fmt"
 	)
 
 	%s
-		
-	func jsonDecode(input []byte) %s {
-		var ret %s
-		json.Unmarshal(input, &ret)
-		return ret
-	}`, definitions, definition, definition)
+	
+	var Root %s
+	func jsonDecode(input []byte) {
+		json.Unmarshal(input, &Root)
+	}`, definitions, definition)
 }
 
-func ParseString(String string) {
+func ParseString(str string) {
 	var i interface{}
 
-	err := json.Unmarshal([]byte(String), &i)
+	err := json.Unmarshal([]byte(str), &i)
 
 	if err != nil {
 		panic(err)
 	}
 
 	content := Parse(i)
-	filename := fmt.Sprintf("./.temp/evaluated-%d.go", time.Now().UnixNano())
+	filename := fmt.Sprintf("./evaluated-%d.go", time.Now().UnixNano())
 
 	ioutil.WriteFile(filename, []byte(content), 0644)
-
-	p, err := plugin.Open(".temp/evaluated.go")
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(p)
 }
 
-func ParseFile(Name string) {
-	Content, err := ioutil.ReadFile(Name)
+func ParseFile(name string) {
+	content, err := ioutil.ReadFile(name)
 
 	if err != nil {
 		panic(err)
 	}
 
-	ParseString(string(Content))
+	ParseString(string(content))
 }
