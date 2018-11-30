@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"models"
+	"os/exec"
+	"plugin"
 	"time"
 )
 
@@ -37,12 +39,12 @@ func Parse(json interface{}) string {
 	%s
 	
 	var Root %s
-	func jsonDecode(input []byte) {
-		json.Unmarshal(input, &Root)
+	func JsonDecode(input string) {
+		json.Unmarshal([]byte(input), &Root)
 	}`, definitions, definition)
 }
 
-func ParseString(str string) {
+func ParseString(str string) interface{} {
 	var i interface{}
 
 	err := json.Unmarshal([]byte(str), &i)
@@ -52,17 +54,51 @@ func ParseString(str string) {
 	}
 
 	content := Parse(i)
-	filename := fmt.Sprintf("./evaluated-%d.go", time.Now().UnixNano())
+	filename := fmt.Sprintf("evaluated-%d", time.Now().UnixNano())
 
-	ioutil.WriteFile(filename, []byte(content), 0644)
-}
-
-func ParseFile(name string) {
-	content, err := ioutil.ReadFile(name)
+	err = ioutil.WriteFile(filename+".go", []byte(content), 0644)
 
 	if err != nil {
 		panic(err)
 	}
 
-	ParseString(string(content))
+	cmd := exec.Command("go", "build", "-buildmode=plugin", "-o", filename+".so", filename+".go")
+
+	err = cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	p, err := plugin.Open(filename + ".so")
+	if err != nil {
+		panic(err)
+	}
+
+	f, err := p.Lookup("JsonDecode")
+
+	if err != nil {
+		panic(err)
+	}
+
+	f.(func(string))(str)
+
+	v, err := p.Lookup("Root")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(v)
+
+	return v
+}
+
+func ParseFile(filename string) interface{} {
+	content, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return ParseString(string(content))
 }
